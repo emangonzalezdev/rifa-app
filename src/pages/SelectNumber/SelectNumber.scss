@@ -1,0 +1,66 @@
+// src/pages/SelectNumber/SelectNumber.scss
+.select-number {
+    .numbers-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+  
+      .number-button {
+        width: 50px;
+        height: 50px;
+        border: none;
+        cursor: pointer;
+        &.available {
+          background-color: #28a745;
+          color: white;
+        }
+        &.taken {
+          background-color: #dc3545;
+          color: white;
+        }
+      }
+    }
+  
+    .pagination {
+      margin-top: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+  
+      button {
+        padding: 5px 10px;
+      }
+    }
+  
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+  
+      .modal-content {
+        background-color: white;
+        padding: 20px;
+        border-radius: 5px;
+        max-width: 400px;
+        width: 100%;
+  
+        input {
+          width: 100%;
+          margin-bottom: 10px;
+          padding: 8px;
+        }
+  
+        button {
+          margin-right: 10px;
+        }
+      }
+    }
+  }
+  
