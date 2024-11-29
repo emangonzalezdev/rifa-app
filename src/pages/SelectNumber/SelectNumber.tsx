@@ -1,9 +1,12 @@
 // src/pages/SelectNumber/SelectNumber.tsx
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { db } from '../../services/firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import './SelectNumber.scss';
+import { useAuth } from '../../contexts/AuthContext';
+import { signInWithGoogle, setUpRecaptcha, signInWithPhone } from '../../services/firebase';
+import { Button } from 'react-bootstrap';
 
 interface Raffle {
   id: string;
@@ -24,7 +27,9 @@ const SelectNumber: React.FC = () => {
   const [page, setPage] = useState(1);
   const numbersPerPage = 50;
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [userInfo, setUserInfo] = useState({ nombre: '', apellido: '', email: '', telefono: '' });
+  const { currentUser } = useAuth();
+  const navigate = useNavigate();
+  const [showLoginOptions, setShowLoginOptions] = useState(false);
 
   useEffect(() => {
     const fetchRaffle = async () => {
@@ -50,23 +55,62 @@ const SelectNumber: React.FC = () => {
     fetchRaffle();
   }, [id]);
 
+  useEffect(() => {
+    if (currentUser && showLoginOptions) {
+      // El usuario acaba de iniciar sesión
+      setShowLoginOptions(false);
+      setIsModalOpen(true);
+    }
+  }, [currentUser, showLoginOptions]);
+
   const totalPages = raffle ? Math.ceil(raffle.cantidadDeNumeros / numbersPerPage) : 0;
 
   const handleNumberClick = (number: number) => {
     setSelectedNumber(number);
-    setIsModalOpen(true);
+    if (currentUser) {
+      // Usuario autenticado, mostrar confirmación
+      setIsModalOpen(true);
+    } else {
+      // Usuario no autenticado, mostrar opciones de login
+      setShowLoginOptions(true);
+    }
   };
 
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
   };
 
-  const handleUserInfoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setUserInfo({ ...userInfo, [e.target.name]: e.target.value });
+  // Funciones para iniciar sesión
+  const handleEmailSignIn = () => {
+    navigate('/login');
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      await signInWithGoogle();
+    } catch (error) {
+      console.error('Error al iniciar sesión con Google:', error);
+    }
+  };
+
+  const handlePhoneSignIn = async () => {
+    const phoneNumber = prompt('Ingresa tu número de teléfono (incluye el código de país):');
+    if (!phoneNumber) return;
+
+    const appVerifier = setUpRecaptcha('recaptcha-container');
+    try {
+      const confirmationResult = await signInWithPhone(phoneNumber, appVerifier);
+      const verificationCode = prompt('Ingresa el código de verificación que recibiste:');
+      if (verificationCode) {
+        await confirmationResult.confirm(verificationCode);
+      }
+    } catch (error) {
+      console.error('Error al iniciar sesión con teléfono:', error);
+    }
   };
 
   const handleConfirmSelection = async () => {
-    if (!raffle || selectedNumber === null) return;
+    if (!raffle || selectedNumber === null || !currentUser) return;
 
     try {
       // Verificar si el número sigue disponible
@@ -84,9 +128,14 @@ const SelectNumber: React.FC = () => {
         } else {
           // Marcar el número como tomado y guardar la información del usuario
           await updateDoc(raffleRef, {
-            [`numerosSeleccionados.${numKey}`]: userInfo,
+            [`numerosSeleccionados.${numKey}`]: {
+              uid: currentUser.uid,
+              nombre: currentUser.displayName || '',
+              email: currentUser.email || '',
+              telefono: currentUser.phoneNumber || '',
+            },
           });
-          alert(`¡Número ${selectedNumber} seleccionado con éxito!`);
+          alert(`¡Elegiste el número ${selectedNumber} con éxito!`);
           setIsModalOpen(false);
           // Actualizar el estado local
           setRaffle((prev) => {
@@ -95,7 +144,12 @@ const SelectNumber: React.FC = () => {
               ...prev,
               numerosSeleccionados: {
                 ...prev.numerosSeleccionados,
-                [numKey]: userInfo,
+                [numKey]: {
+                  uid: currentUser.uid,
+                  nombre: currentUser.displayName || '',
+                  email: currentUser.email || '',
+                  telefono: currentUser.phoneNumber || '',
+                },
               },
             };
           });
@@ -164,48 +218,41 @@ const SelectNumber: React.FC = () => {
         </button>
       </div>
 
-      {/* Modal para confirmar la selección */}
-      {isModalOpen && (
+      {/* Modal para usuarios autenticados */}
+      {isModalOpen && currentUser && (
         <div className="modal-overlay">
           <div className="modal-content">
-            <h3>¿Quieres elegir el número {selectedNumber}?</h3>
-            <p>Por favor, introduce tus datos:</p>
-            <input
-              type="text"
-              name="nombre"
-              placeholder="Nombre"
-              value={userInfo.nombre}
-              onChange={handleUserInfoChange}
-              required
-            />
-            <input
-              type="text"
-              name="apellido"
-              placeholder="Apellido"
-              value={userInfo.apellido}
-              onChange={handleUserInfoChange}
-              required
-            />
-            <input
-              type="email"
-              name="email"
-              placeholder="Correo Electrónico"
-              value={userInfo.email}
-              onChange={handleUserInfoChange}
-              required
-            />
-            <input
-              type="tel"
-              name="telefono"
-              placeholder="Teléfono"
-              value={userInfo.telefono}
-              onChange={handleUserInfoChange}
-              required
-            />
+            <h3>
+              ¡Buenísima elección, {currentUser.displayName || currentUser.email || currentUser.phoneNumber}!
+            </h3>
+            <p>¿Quieres elegir el número {selectedNumber}?</p>
             <button className="btn btn-primary" onClick={handleConfirmSelection}>
               Confirmar
             </button>
             <button className="btn btn-secondary" onClick={() => setIsModalOpen(false)}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para usuarios no autenticados */}
+      {showLoginOptions && !currentUser && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h3>Por favor, debes loguearte / registrarte</h3>
+            <p>Antes de elegir el número {selectedNumber}, inicia sesión o regístrate:</p>
+            <Button variant="primary" onClick={handleEmailSignIn}>
+              Iniciar Sesión con Email
+            </Button>
+            <Button variant="danger" onClick={handleGoogleSignIn}>
+              Iniciar Sesión con Google
+            </Button>
+            <Button variant="success" onClick={handlePhoneSignIn}>
+              Iniciar Sesión con Teléfono
+            </Button>
+            <div id="recaptcha-container"></div>
+            <button className="btn btn-secondary" onClick={() => setShowLoginOptions(false)}>
               Cancelar
             </button>
           </div>

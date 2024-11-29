@@ -2,7 +2,7 @@
 
 // Importa las funciones necesarias de los SDK que necesitas
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithPhoneNumber, RecaptchaVerifier } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore'; // O getDatabase si usas Realtime Database
 
 const firebaseConfig = {
@@ -21,5 +21,19 @@ const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 // Inicializa los servicios de autenticación y base de datos
 export const auth = getAuth(app);
 export const db = getFirestore(app); // O getDatabase(app) si usas Realtime Database
+
+// Añadir la función de autenticación con Google
+export const signInWithGoogle = () => {
+  const provider = new GoogleAuthProvider();
+  return signInWithPopup(auth, provider);
+};
+
+// Añadir funciones para autenticación por teléfono
+export const signInWithPhone = (phoneNumber: string, appVerifier: RecaptchaVerifier) => {
+  return signInWithPhoneNumber(auth, phoneNumber, appVerifier);
+};
+export const setUpRecaptcha = (elementId: string) => {
+  return new RecaptchaVerifier(auth, elementId, {});
+};
 
 export default app;

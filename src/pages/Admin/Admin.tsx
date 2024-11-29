@@ -5,54 +5,76 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 import './Admin.scss';
 
-interface Rifa {
+interface Raffle {
   id: string;
   nombre: string;
-  descripcion: string;
-  fecha: any;
-  tipo: string;
-  sorteo: boolean;
-  cantidadDeNumeros: number;
+  numerosSeleccionados: { [key: string]: any };
+  // otros campos...
 }
 
 const Admin: React.FC = () => {
-  const [rifas, setRifas] = useState<Rifa[]>([]);
+  const [createdRaffles, setCreatedRaffles] = useState<Raffle[]>([]);
+  const [participatedRaffles, setParticipatedRaffles] = useState<Raffle[]>([]);
   const { currentUser } = useAuth();
 
   useEffect(() => {
-    const fetchRifas = async () => {
-      const q = query(
-        collection(db, 'rifas'),
-        where('creadorId', '==', currentUser?.uid)
-      );
+    if (!currentUser) return;
+
+    const fetchCreatedRaffles = async () => {
+      const q = query(collection(db, 'rifas'), where('creadorId', '==', currentUser.uid));
       const querySnapshot = await getDocs(q);
-      const rifasData: Rifa[] = [];
-      querySnapshot.forEach((doc) => {
-        rifasData.push({ id: doc.id, ...doc.data() } as Rifa);
-      });
-      setRifas(rifasData);
+      const raffles: Raffle[] = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Raffle[];
+      setCreatedRaffles(raffles);
     };
 
-    fetchRifas();
+    const fetchParticipatedRaffles = async () => {
+      const rafflesRef = collection(db, 'rifas');
+      const querySnapshot = await getDocs(rafflesRef);
+      const raffles: Raffle[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data() as Raffle;
+        const numerosSeleccionados = data.numerosSeleccionados || {};
+        const userParticipated = Object.values(numerosSeleccionados).some(
+          (userInfo: any) => userInfo.uid === currentUser.uid
+        );
+        if (userParticipated) {
+          raffles.push({ ...data, id: doc.id });
+        }
+      });
+      setParticipatedRaffles(raffles);
+    };
+
+    fetchCreatedRaffles();
+    fetchParticipatedRaffles();
   }, [currentUser]);
 
   return (
     <div className="admin container">
       <h2>Panel de Administración 🛠️</h2>
-      <Link to="/create-raffle" className="btn btn-primary mb-3">
-        Crear Nueva Rifa
-      </Link>
-      <div className="list-group">
-        {rifas.map((rifa) => (
-          <Link
-            key={rifa.id}
-            to={`/raffle/${rifa.id}`}
-            className="list-group-item list-group-item-action"
-          >
-            {rifa.nombre}
-          </Link>
-        ))}
-      </div>
+      <h3>Tus Rifas Creadas</h3>
+      {createdRaffles.length > 0 ? (
+        createdRaffles.map((raffle) => (
+          <div key={raffle.id}>
+            <Link to={`/raffle/${raffle.id}`}>{raffle.nombre}</Link>
+          </div>
+        ))
+      ) : (
+        <p>No has creado ninguna rifa.</p>
+      )}
+
+      <h3>Rifas en las que Participas</h3>
+      {participatedRaffles.length > 0 ? (
+        participatedRaffles.map((raffle) => (
+          <div key={raffle.id}>
+            <Link to={`/raffle/${raffle.id}`}>{raffle.nombre}</Link>
+          </div>
+        ))
+      ) : (
+        <p>No estás participando en ninguna rifa.</p>
+      )}
     </div>
   );
 };
