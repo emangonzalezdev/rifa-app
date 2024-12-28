@@ -7,6 +7,7 @@ import './SelectNumber.scss';
 import { useAuth } from '../../contexts/AuthContext';
 import { signInWithGoogle, setUpRecaptcha, signInWithPhone } from '../../services/firebase';
 import { Button } from 'react-bootstrap';
+import AuthModal from '../../components/AuthModal/AuthModal';
 
 interface Raffle {
   id: string;
@@ -29,7 +30,7 @@ const SelectNumber: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { currentUser } = useAuth();
   const navigate = useNavigate();
-  const [showLoginOptions, setShowLoginOptions] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   useEffect(() => {
     const fetchRaffle = async () => {
@@ -56,12 +57,12 @@ const SelectNumber: React.FC = () => {
   }, [id]);
 
   useEffect(() => {
-    if (currentUser && showLoginOptions) {
+    if (currentUser && showAuthModal) {
       // El usuario acaba de iniciar sesión
-      setShowLoginOptions(false);
+      setShowAuthModal(false);
       setIsModalOpen(true);
     }
-  }, [currentUser, showLoginOptions]);
+  }, [currentUser, showAuthModal]);
 
   const totalPages = raffle ? Math.ceil(raffle.cantidadDeNumeros / numbersPerPage) : 0;
 
@@ -71,8 +72,8 @@ const SelectNumber: React.FC = () => {
       // Usuario autenticado, mostrar confirmación
       setIsModalOpen(true);
     } else {
-      // Usuario no autenticado, mostrar opciones de login
-      setShowLoginOptions(true);
+      // Usuario no autenticado, mostrar modal de autenticación
+      setShowAuthModal(true);
     }
   };
 
@@ -236,28 +237,8 @@ const SelectNumber: React.FC = () => {
         </div>
       )}
 
-      {/* Modal para usuarios no autenticados */}
-      {showLoginOptions && !currentUser && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h3>Por favor, debes loguearte / registrarte</h3>
-            <p>Antes de elegir el número {selectedNumber}, inicia sesión o regístrate:</p>
-            <Button variant="primary" onClick={handleEmailSignIn}>
-              Iniciar Sesión con Email
-            </Button>
-            <Button variant="danger" onClick={handleGoogleSignIn}>
-              Iniciar Sesión con Google
-            </Button>
-            <Button variant="success" onClick={handlePhoneSignIn}>
-              Iniciar Sesión con Teléfono
-            </Button>
-            <div id="recaptcha-container"></div>
-            <button className="btn btn-secondary" onClick={() => setShowLoginOptions(false)}>
-              Cancelar
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Modal de autenticación */}
+      <AuthModal show={showAuthModal} onClose={() => setShowAuthModal(false)} />
     </div>
   );
 };

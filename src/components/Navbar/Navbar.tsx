@@ -1,12 +1,14 @@
 // src/components/navbar/Navbar.tsx
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { auth } from '../../services/firebase';
 import { signOut } from 'firebase/auth';
+import AuthModal from '../AuthModal/AuthModal';
 
 const Navbar: React.FC = () => {
   const { currentUser } = useAuth();
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -76,19 +78,20 @@ const Navbar: React.FC = () => {
             <>
               {/* Enlaces para usuarios no autenticados */}
               <li className="nav-item">
-                <Link className="nav-link" to="/login">
-                  Iniciar Sesión
-                </Link>
-              </li>
-              <li className="nav-item">
-                <Link className="nav-link" to="/register">
-                  Registrarse
-                </Link>
+                <span
+                  className="nav-link"
+                  onClick={() => setShowAuthModal(true)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  Iniciar Sesión / Registrarse
+                </span>
               </li>
             </>
           )}
         </ul>
       </div>
+      {/* Modal de autenticación */}
+      <AuthModal show={showAuthModal} onClose={() => setShowAuthModal(false)} />
     </nav>
   );
 };

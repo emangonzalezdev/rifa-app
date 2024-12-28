@@ -8,10 +8,13 @@ import { useNavigate } from 'react-router-dom';
 import { auth } from '../../services/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useAuth } from '../../contexts/AuthContext';
+import AuthModal from '../../components/AuthModal/AuthModal';
+import { useState } from 'react';
 
 const Home: React.FC = () => {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   const handleEmailSignIn = () => {
     navigate('/login');
@@ -69,7 +72,7 @@ const Home: React.FC = () => {
       )}
       {!currentUser && (
         <div>
-          <Button variant="primary" onClick={handleEmailSignIn}>
+       {/*     <Button variant="primary" onClick={handleEmailSignIn}>
             Iniciar Sesión con Email
           </Button>
           <Button variant="danger" onClick={handleGoogleSignIn}>
@@ -77,13 +80,17 @@ const Home: React.FC = () => {
           </Button>
           <Button variant="success" onClick={handlePhoneSignIn}>
             Iniciar Sesión con Teléfono
+          </Button>*/}
+          <Button variant="primary" onClick={() => setShowAuthModal(true)}>
+            Iniciar Sesión / Registrarse
           </Button>
           <div id="recaptcha-container"></div>
         </div>
       )}
-      <Button variant="primary" onClick={testFirebaseConnection}>
+      <AuthModal show={showAuthModal} onClose={() => setShowAuthModal(false)} />
+      {/*  <Button variant="primary" onClick={testFirebaseConnection}>
         Probar Conexión con Firebase
-      </Button>
+      </Button>*/}
       {/* Otros elementos */}
     </div>
   );
